@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Layout, Menu, Avatar, Dropdown, message } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, UploadOutlined, UserOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { LeftOutlined, RightOutlined, UploadOutlined, UserOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import './Layout.css';
 
@@ -62,7 +62,10 @@ const MainLayout = ({ children }) => {
   return (
     <Layout className="main-layout">
       <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="logo" />
+        {React.createElement(collapsed ? LeftOutlined : RightOutlined , {
+            className: 'trigger',
+            onClick: toggleCollapsed,
+          })}
         <Menu
           theme="dark"
           mode="inline"
@@ -94,10 +97,8 @@ const MainLayout = ({ children }) => {
       </Sider>
       <Layout>
         <Header className="main-header">
-          {React.createElement(collapsed ? MenuUnfoldOutlined : MenuFoldOutlined, {
-            className: 'trigger',
-            onClick: toggleCollapsed,
-          })}
+          <div className="logo">东真图后台管理</div>
+          
           <div className="user-info">
             <Dropdown menu={{ items: menuItems }}>
               <div>
@@ -109,6 +110,7 @@ const MainLayout = ({ children }) => {
             </Dropdown>
           </div>
         </Header>
+        <header className="main-header"></header>
         <Content
           className="main-content"
         >
