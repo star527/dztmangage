@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Table, Button, Modal, Form, Input, message, 
-  Popconfirm, Select, Checkbox
+  Popconfirm, Select, Image
 } from 'antd';
 import { 
-  PlusOutlined, EditOutlined, DeleteOutlined, RedoOutlined
+  PlusOutlined, EditOutlined, DeleteOutlined, 
+  RedoOutlined
 } from '@ant-design/icons';
-import { fetchUsers as fetchUsersAPI, createUser, updateUser, deleteUser, resetUserPassword, fetchRoles as fetchRolesAPI } from '../services/api';
+import { fetchUsers, createUser, updateUser, deleteUser, resetUserPassword, fetchRoles } from '../services/api';
+import { convertArrayTimeFields } from '../utils/timeUtils';
 
 const { Option } = Select;
 
@@ -19,29 +21,49 @@ const UserManagement = () => {
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [form] = Form.useForm();
   
-  const fetchUsers = async (searchParams = {}) => {
+  const fetchUsers2 = async (searchParams = {}) => {
     setLoading(true);
     try {
-      const data = await fetchUsersAPI(searchParams);
-      setUsers(data);
+      const data = await fetchUsers(searchParams);
+      // 确保data是数组
+      if (Array.isArray(data)) {
+        // 格式化时间字段
+        const formattedData = convertArrayTimeFields(data);
+        setUsers(formattedData);
+      } else {
+        console.error('获取的用户数据不是数组:', data);
+        setUsers([]);
+      }
     } catch (error) {
+      console.error('获取用户数据失败:', error);
       message.error('获取用户数据失败: ' + error.message);
+      // 出错时设置为空数组
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
   
   useEffect(() => {
-    fetchUsers();
-    fetchRoles();
+    fetchUsers2();
+    fetchRoles2();
   }, []);
   
-  const fetchRoles = async () => {
+  const fetchRoles2 = async () => {
     try {
-      const data = await fetchRolesAPI();
-      setRoles(data);
+      const data = await fetchRoles();
+      // 确保data是数组
+      if (Array.isArray(data)) {
+        setRoles(data);
+      } else {
+        console.error('获取的角色数据不是数组:', data);
+        setRoles([]);
+      }
     } catch (error) {
+      console.error('获取角色数据失败:', error);
       message.error('获取角色数据失败: ' + error.message);
+      // 出错时设置为空数组
+      setRoles([]);
     }
   };
   
@@ -65,7 +87,7 @@ const UserManagement = () => {
     try {
       await deleteUser(id);
       message.success('删除成功');
-      fetchUsers();
+      fetchUsers2();
     } catch (error) {
       message.error('删除失败: ' + error.message);
     }
@@ -81,7 +103,7 @@ const UserManagement = () => {
       await Promise.all(selectedRowKeys.map(id => deleteUser(id)));
       message.success(`成功删除${selectedRowKeys.length}个用户`);
       setSelectedRowKeys([]);
-      fetchUsers();
+      fetchUsers2();
     } catch (error) {
       message.error('批量删除失败: ' + error.message);
     }
@@ -91,7 +113,7 @@ const UserManagement = () => {
     try {
       await resetUserPassword(id);
       message.success('密码已重置为 dzt123');
-      fetchUsers();
+      fetchUsers2();
     } catch (error) {
       message.error('重置密码失败: ' + error.message);
     }
@@ -137,7 +159,7 @@ const UserManagement = () => {
         }
         setModalVisible(false);
         form.resetFields();
-        fetchUsers();
+        fetchUsers2();
       } catch (error) {
         message.error((editingUser ? '更新' : '添加') + '失败: ' + error.message);
       }
@@ -151,7 +173,7 @@ const UserManagement = () => {
   
   const handleSearch = (values) => {
     // 执行搜索操作
-    fetchUsers(values);
+    fetchUsers2(values);
   };
   
   const onSelectChange = (newSelectedRowKeys) => {
@@ -176,6 +198,10 @@ const UserManagement = () => {
       dataIndex: 'role_id',
       key: 'role_id',
       render: (_, record) => {
+        // 添加保护性检查，确保roles是数组
+        if (!Array.isArray(roles)) {
+          return '';
+        }
         const role = roles.find(r => r.id === record.role_id);
         return role ? role.name : '';
       }
@@ -244,10 +270,10 @@ const UserManagement = () => {
           <Form layout="inline" onFinish={handleSearch}>
             <Form.Item name="role_id">
               <Select placeholder="角色分类" allowClear style={{ width: 120 }}>
-                {roles.map(role => (
-                  <Option key={role.id} value={role.id}>{role.name}</Option>
-                ))}
-              </Select>
+              {Array.isArray(roles) && roles.map(role => (
+                <Option key={role.id} value={role.id}>{role.name}</Option>
+              ))}
+            </Select>
             </Form.Item>
             <Form.Item name="username">
               <Input placeholder="用户名称" />
@@ -284,7 +310,7 @@ const UserManagement = () => {
             rules={[{ required: true, message: '请选择角色!' }]}
           >
             <Select>
-              {roles.map(role => (
+              {Array.isArray(roles) && roles.map(role => (
                 <Option key={role.id} value={role.id}>{role.name}</Option>
               ))}
             </Select>

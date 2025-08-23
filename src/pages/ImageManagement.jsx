@@ -8,6 +8,7 @@ import {
   UploadOutlined, DownloadOutlined 
 } from '@ant-design/icons';
 import { fetchImages, createImage, updateImage, deleteImage, fetchCategories } from '../services/api';
+import { convertArrayTimeFields } from '../utils/timeUtils';
 
 const { Option } = Select;
 
@@ -26,7 +27,9 @@ const ImageManagement = () => {
     setLoading(true);
     try {
       const data = await fetchImages();
-      setImages(data);
+      // 格式化时间字段
+      const formattedData = convertArrayTimeFields(data);
+      setImages(formattedData);
     } catch (error) {
       console.error('Error fetching images:', error);
       message.error('获取图片数据失败');

@@ -7,15 +7,55 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 
+// 设置时区为Asia/Shanghai
+process.env.TZ = 'Asia/Shanghai';
+
 // 获取当前文件的目录路径
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 创建数据库文件路径
-const dbPath = path.resolve(__dirname, 'database.sqlite');
+const dataDir = path.resolve(__dirname, 'data');
+// 确保 data 目录存在
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+const dbPath = path.resolve(dataDir, 'database.sqlite');
 
 // 初始化数据库
 const db = new Database(dbPath);
+
+// 辅助函数：将数据库时间转换为本地时间
+function convertDBTimeToLocal(dbTime) {
+  if (!dbTime) return dbTime;
+  // 数据库中存储的是UTC时间，需要先转换为Date对象，然后再转换为本地时间
+  const date = new Date(dbTime + 'Z'); // 添加'Z'表示UTC时间
+  return date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }).replace(/\//g, '-').replace(', ', ' ');
+}
+
+// 辅助函数：转换对象中的时间字段
+function convertObjectTimeFields(obj) {
+  if (!obj) return obj;
+  const newObj = { ...obj };
+  if (newObj.created_at) newObj.created_at = convertDBTimeToLocal(newObj.created_at);
+  if (newObj.updated_at) newObj.updated_at = convertDBTimeToLocal(newObj.updated_at);
+  return newObj;
+}
+
+// 辅助函数：转换数组中的时间字段
+function convertArrayTimeFields(arr) {
+  if (!arr || !Array.isArray(arr)) return arr;
+  return arr.map(item => convertObjectTimeFields(item));
+}
+
+// 创建初始化标记表
+db.exec(`
+  CREATE TABLE IF NOT EXISTS init_flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    flag_name TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`);
 
 // 创建图片分类表
 db.exec(`
@@ -66,41 +106,49 @@ db.exec(`
   )
 `);
 
-// 插入默认角色
-const insertDefaultRoles = db.prepare(`
-  INSERT OR IGNORE INTO roles (name, description) VALUES (?, ?)
-`);
+// 检查是否已经初始化过数据
+const initFlag = db.prepare('SELECT * FROM init_flags WHERE flag_name = ?').get('data_initialized');
 
-insertDefaultRoles.run('管理员', '系统管理员');
-insertDefaultRoles.run('会员', '普通会员');
+if (!initFlag) {
+  // 插入默认角色
+  const insertDefaultRoles = db.prepare(`
+    INSERT OR IGNORE INTO roles (name, description) VALUES (?, ?)
+  `);
 
-// 插入默认管理员用户
-const insertDefaultAdmin = db.prepare(`
-  INSERT OR IGNORE INTO users (role_id, username, password) VALUES (?, ?, ?)
-`);
+  insertDefaultRoles.run('管理员', '系统管理员');
+  insertDefaultRoles.run('会员', '普通会员');
 
-// 生成默认管理员密码
-const defaultPassword = 'dzt123'; // 在实际应用中，应该使用更安全的密码生成方法
-const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-insertDefaultAdmin.run(1, 'admin', hashedPassword);
+  // 插入默认管理员用户
+  const insertDefaultAdmin = db.prepare(`
+    INSERT OR IGNORE INTO users (role_id, username, password) VALUES (?, ?, ?)
+  `);
 
-// 更新现有管理员用户的密码
-const updateAdminPassword = db.prepare(`
-  UPDATE users SET password = ? WHERE username = ?
-`);
-updateAdminPassword.run(hashedPassword, 'admin');
+  // 生成默认管理员密码
+  const defaultPassword = 'dzt123'; // 在实际应用中，应该使用更安全的密码生成方法
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  insertDefaultAdmin.run(1, 'admin', hashedPassword);
 
-// 插入默认图片分类
-const insertDefaultCategories = db.prepare(`
-  INSERT OR IGNORE INTO image_categories (name, description) VALUES (?, ?)
-`);
+  // 更新现有管理员用户的密码
+  const updateAdminPassword = db.prepare(`
+    UPDATE users SET password = ? WHERE username = ?
+  `);
+  updateAdminPassword.run(hashedPassword, 'admin');
 
-insertDefaultCategories.run('乾', '乾卦相关图片');
-insertDefaultCategories.run('坤', '坤卦相关图片');
-insertDefaultCategories.run('成人', '成人相关图片');
-insertDefaultCategories.run('儿童', '儿童相关图片');
-insertDefaultCategories.run('乾字', '乾字相关图片');
-insertDefaultCategories.run('坤字', '坤字相关图片');
+  // 插入默认图片分类
+  const insertDefaultCategories = db.prepare(`
+    INSERT OR IGNORE INTO image_categories (name, description) VALUES (?, ?)
+  `);
+
+  insertDefaultCategories.run('乾', '乾卦相关图片');
+  insertDefaultCategories.run('坤', '坤卦相关图片');
+  insertDefaultCategories.run('成人', '成人相关图片');
+  insertDefaultCategories.run('儿童', '儿童相关图片');
+  insertDefaultCategories.run('乾字', '乾字相关图片');
+  insertDefaultCategories.run('坤字', '坤字相关图片');
+  
+  // 设置初始化标记
+  db.prepare('INSERT OR IGNORE INTO init_flags (flag_name) VALUES (?)').run('data_initialized');
+}
 
 // 配置 multer 中间件
 const storage = multer.diskStorage({
@@ -136,8 +184,10 @@ app.use(express.json());
 
 // API 路由
 app.get('/api/categories', (req, res) => {
+  console.log('API /api/categories called');
   const categories = db.prepare('SELECT * FROM image_categories').all();
-  res.json(categories);
+  console.log('Categories fetched:', categories);
+  res.json(convertArrayTimeFields(categories));
 });
 
 // 图片分类管理路由
@@ -149,7 +199,7 @@ app.post('/api/categories', (req, res) => {
     const result = db.prepare('INSERT INTO image_categories (name, description) VALUES (?, ?)').run(name, description);
     const newCategory = db.prepare('SELECT * FROM image_categories WHERE id = ?').get(result.lastInsertRowid);
     console.log('Created category:', newCategory);
-    res.json(newCategory);
+    res.json(convertObjectTimeFields(newCategory));
   } catch (error) {
     console.error('Error creating category:', error);
     res.status(500).json({ error: error.message });
@@ -162,12 +212,12 @@ app.put('/api/categories/:id', (req, res) => {
   const { name, description } = req.body;
   
   try {
-    const result = db.prepare('UPDATE image_categories SET name = ?, description = ? WHERE id = ?').run(name, description, categoryId);
+    const result = db.prepare('UPDATE image_categories SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name, description, categoryId);
     
     if (result.changes > 0) {
       const updatedCategory = db.prepare('SELECT * FROM image_categories WHERE id = ?').get(categoryId);
       console.log('Updated category:', updatedCategory);
-      res.json(updatedCategory);
+      res.json(convertObjectTimeFields(updatedCategory));
     } else {
       res.status(404).json({ error: '分类不存在' });
     }
@@ -213,12 +263,12 @@ app.get('/api/images', (req, res) => {
   }
   
   const images = db.prepare(query).all(...params);
-  res.json(images);
+  res.json(convertArrayTimeFields(images));
 });
 
 app.get('/api/roles', (req, res) => {
   const roles = db.prepare('SELECT * FROM roles').all();
-  res.json(roles);
+  res.json(convertArrayTimeFields(roles));
 });
 
 app.get('/api/users', (req, res) => {
@@ -237,7 +287,7 @@ app.get('/api/users', (req, res) => {
   }
   
   const users = db.prepare(query).all(...params);
-  res.json(users);
+  res.json(convertArrayTimeFields(users));
 });
 
 // 用户登录路由
@@ -345,12 +395,19 @@ app.put('/api/users/:id', async (req, res) => {
       return res.json({ success: true, message: '没有需要更新的信息' });
     }
     
+    // 添加更新时间字段
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    
     // 执行更新
     updateParams.push(userId);
     const result = db.prepare(`UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`).run(...updateParams);
     
     if (result.changes > 0) {
-      res.json({ success: true, message: '用户信息更新成功' });
+      // 查询更新后的用户信息
+      const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+      // 移除密码字段再返回
+      delete updatedUser.password;
+      res.json(convertObjectTimeFields(updatedUser));
     } else {
       res.status(404).json({ success: false, message: '用户不存在' });
     }
@@ -366,7 +423,7 @@ app.get('/api/images', (req, res) => {
     console.log('Fetching all images from database');
     const images = db.prepare('SELECT * FROM images').all();
     console.log('Found images:', images);
-    res.json(images);
+    res.json(convertArrayTimeFields(images));
   } catch (error) {
     console.error('Error fetching images:', error);
     res.status(500).json({ error: error.message });
@@ -381,7 +438,7 @@ app.get('/api/images/:id', (req, res) => {
     const image = db.prepare('SELECT * FROM images WHERE id = ?').get(imageId);
     
     if (image) {
-      res.json(image);
+      res.json(convertObjectTimeFields(image));
     } else {
       res.status(404).json({ error: '图片不存在' });
     }
@@ -402,7 +459,7 @@ app.post('/api/images', upload.single('image'), (req, res) => {
     const result = db.prepare('INSERT INTO images (category_id, name, description, image_path) VALUES (?, ?, ?, ?)').run(category_id, name, description, image_path);
     const newImage = db.prepare('SELECT * FROM images WHERE id = ?').get(result.lastInsertRowid);
     console.log('Inserted image:', newImage);
-    res.json(newImage);
+    res.json(convertObjectTimeFields(newImage));
   } catch (error) {
     console.error('Error inserting image:', error);
     res.status(500).json({ error: error.message });
@@ -428,7 +485,7 @@ app.put('/api/images/:id', upload.single('image'), (req, res) => {
       // 如果上传了新图片，则更新所有字段
       const image_path = `/uploads/${req.file.filename}`;
       console.log('Updating image with new file:', image_path);
-      result = db.prepare('UPDATE images SET category_id = ?, name = ?, description = ?, image_path = ? WHERE id = ?').run(category_id, name, description, image_path, imageId);
+      result = db.prepare('UPDATE images SET category_id = ?, name = ?, description = ?, image_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(category_id, name, description, image_path, imageId);
       
       // 删除旧图片文件
       if (oldImage && oldImage.image_path) {
@@ -444,13 +501,13 @@ app.put('/api/images/:id', upload.single('image'), (req, res) => {
     } else {
       // 如果没有上传新图片，则只更新其他字段
       console.log('Updating image without new file');
-      result = db.prepare('UPDATE images SET category_id = ?, name = ?, description = ? WHERE id = ?').run(category_id, name, description, imageId);
+      result = db.prepare('UPDATE images SET category_id = ?, name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(category_id, name, description, imageId);
     }
     
     if (result.changes > 0) {
       const updatedImage = db.prepare('SELECT * FROM images WHERE id = ?').get(imageId);
       console.log('Updated image:', updatedImage);
-      res.json(updatedImage);
+      res.json(convertObjectTimeFields(updatedImage));
     } else {
       console.log('Image not found');
       res.status(404).json({ error: '图片不存在' });
@@ -509,7 +566,7 @@ app.post('/api/roles', (req, res) => {
   try {
     const result = db.prepare('INSERT INTO roles (name, description) VALUES (?, ?)').run(name, description);
     const newRole = db.prepare('SELECT * FROM roles WHERE id = ?').get(result.lastInsertRowid);
-    res.json(newRole);
+    res.json(convertObjectTimeFields(newRole));
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -520,11 +577,11 @@ app.put('/api/roles/:id', (req, res) => {
   const { name, description } = req.body;
   
   try {
-    const result = db.prepare('UPDATE roles SET name = ?, description = ? WHERE id = ?').run(name, description, roleId);
+    const result = db.prepare('UPDATE roles SET name = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name, description, roleId);
     
     if (result.changes > 0) {
       const updatedRole = db.prepare('SELECT * FROM roles WHERE id = ?').get(roleId);
-      res.json(updatedRole);
+      res.json(convertObjectTimeFields(updatedRole));
     } else {
       res.status(404).json({ error: '角色不存在' });
     }
@@ -574,7 +631,7 @@ app.post('/api/users', async (req, res) => {
     // 移除密码字段再返回
     delete newUser.password;
     console.log('Sending response:', newUser);
-    res.json(newUser);
+    res.json(convertObjectTimeFields(newUser));
   } catch (error) {
     console.error('Error creating user:', error);
     res.status(500).json({ success: false, message: 'Failed to create user: ' + error.message });
@@ -586,13 +643,13 @@ app.put('/api/users/:id', (req, res) => {
   const { role_id, username } = req.body;
   
   try {
-    const result = db.prepare('UPDATE users SET role_id = ?, username = ? WHERE id = ?').run(role_id, username, userId);
+    const result = db.prepare('UPDATE users SET role_id = ?, username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(role_id, username, userId);
     
     if (result.changes > 0) {
       const updatedUser = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
       // 移除密码字段再返回
       delete updatedUser.password;
-      res.json(updatedUser);
+      res.json(convertObjectTimeFields(updatedUser));
     } else {
       res.status(404).json({ error: '用户不存在' });
     }

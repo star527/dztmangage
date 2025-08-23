@@ -1,3 +1,7 @@
+# 添加以下行
+database.sqlite
+data/
+
 # Logs
 logs
 *.log
