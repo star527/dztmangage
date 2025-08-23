@@ -30,6 +30,7 @@ const AppRoutes = () => {
         <Route path="/dashboard/image-management" element={<ProtectedRoute><MainLayout><ImageManagement /></MainLayout></ProtectedRoute>} />
         <Route path="/dashboard/role-management" element={<ProtectedRoute><MainLayout><RoleManagement /></MainLayout></ProtectedRoute>} />
         <Route path="/dashboard/user-management" element={<ProtectedRoute><MainLayout><UserManagement /></MainLayout></ProtectedRoute>} />
+        <Route path="/database/*" element={<ProtectedRoute><Navigate to="/login" /></ProtectedRoute>} />
       </Routes>
     </Router>
   );
