@@ -17,7 +17,9 @@ const MainLayout = ({ children }) => {
   
   const handleLogout = () => {
     message.success('退出登录成功');
-    // 这里应该清除登录状态并跳转到登录页面
+    // 清除本地存储的用户信息
+    localStorage.removeItem('user');
+    // 跳转到登录页面
     navigate('/login');
   };
   
@@ -100,7 +102,9 @@ const MainLayout = ({ children }) => {
             <Dropdown menu={{ items: menuItems }}>
               <div>
                 <Avatar size="small" icon={<UserOutlined />} />
-                <span className="username">管理员</span>
+                <span className="username">
+                  {JSON.parse(localStorage.getItem('user') || '{}').username || '管理员'}
+                </span>
               </div>
             </Dropdown>
           </div>

@@ -13,8 +13,10 @@ const Login = () => {
     setLoading(true);
     try {
       const { username, password } = values;
-      await login(username, password);
+      const userData = await login(username, password);
       message.success('登录成功');
+      // 保存用户信息到本地存储
+      localStorage.setItem('user', JSON.stringify(userData.user));
       // 跳转到主页面
       navigate('/dashboard');
     } catch (error) {
