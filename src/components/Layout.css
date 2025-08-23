@@ -1,0 +1,67 @@
+.main-layout {
+  min-height: 100vh;
+  min-width: 100vw;
+  display: flex;
+  flex-direction: row;
+}
+
+.main-layout .ant-layout-sider {
+  height: 100vh;
+  overflow: auto;
+  z-index: 100;
+}
+
+.main-layout .ant-layout-header {
+  z-index: 99;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+}
+
+.main-header {
+  background: #fff;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+}
+
+.trigger {
+  font-size: 18px;
+  line-height: 32px;
+  cursor: pointer;
+  transition: color 0.3s;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f00;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trigger:hover {
+  color: #1890ff;
+}
+
+.user-info {
+  cursor: pointer;
+}
+
+.username {
+  margin-left: 8px;
+}
+
+.main-content {
+  flex: 1;
+  margin: 24px;
+  padding: 24px;
+  background: #fff;
+  min-height: 280px;
+}
+
+.logo {
+  height: 32px;
+  margin: 16px;
+  background: rgba(255, 255, 255, 0.3);
+}
