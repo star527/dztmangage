@@ -62,6 +62,13 @@ src/
 - **roles**: 角色表
 - **users**: 用户表
 
+## API接口文档
+
+项目提供了完整的API接口文档，详细说明了所有可用的接口。
+
+- [通过前端访问API文档](/API_DOCUMENTATION.md)
+- [通过后端API路由访问API文档](http://localhost:3000/api-docs)
+
 ## 安装与运行
 
 ```bash

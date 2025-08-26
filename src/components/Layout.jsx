@@ -45,6 +45,10 @@ const MainLayout = ({ children }) => {
       case '4':
         navigate('/dashboard/user-management');
         break;
+      case '5':
+        // 在新标签页中打开API文档
+        window.open('/API_DOCUMENTATION.md', '_blank');
+        break;
       default:
         break;
     }
@@ -56,6 +60,7 @@ const MainLayout = ({ children }) => {
     if (location.pathname.includes('image-management')) return '2';
     if (location.pathname.includes('role-management')) return '3';
     if (location.pathname.includes('user-management')) return '4';
+    if (location.pathname.includes('API_DOCUMENTATION.md')) return '5';
     return '1';
   };
   
@@ -91,6 +96,11 @@ const MainLayout = ({ children }) => {
               key: '4',
               icon: <UserOutlined />,
               label: '用户管理',
+            },
+            {
+              key: '5',
+              icon: <UserOutlined />,
+              label: 'API文档',
             },
           ]}
         />

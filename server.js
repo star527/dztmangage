@@ -674,6 +674,11 @@ app.delete('/api/users/:id', (req, res) => {
   }
 });
 
+// 提供API文档访问
+app.get('/api-docs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'API_DOCUMENTATION.md'));
+});
+
 // 启动服务器
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
