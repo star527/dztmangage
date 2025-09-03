@@ -7,6 +7,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 
+// 加载.env文件中的环境变量
+import dotenv from 'dotenv';
+dotenv.config();
+
+// 环境配置 - 在生产环境中，可以通过环境变量设置
+const isProduction = process.env.NODE_ENV === 'production';
+const FRONTEND_URL = process.env.FRONTEND_URL || (isProduction ? 'https://www.dongzhentu.com' : 'http://localhost:5173');
+
 // 设置时区为Asia/Shanghai
 process.env.TZ = 'Asia/Shanghai';
 
@@ -123,16 +131,22 @@ if (!initFlag) {
     INSERT OR IGNORE INTO users (role_id, username, password) VALUES (?, ?, ?)
   `);
 
-  // 生成默认管理员密码
-  const defaultPassword = 'dzt123'; // 在实际应用中，应该使用更安全的密码生成方法
-  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
-  insertDefaultAdmin.run(1, 'admin', hashedPassword);
-
-  // 更新现有管理员用户的密码
-  const updateAdminPassword = db.prepare(`
-    UPDATE users SET password = ? WHERE username = ?
-  `);
-  updateAdminPassword.run(hashedPassword, 'admin');
+  // 注意：在生产环境中，请不要使用默认密码
+  // 应该在首次运行前手动设置一个安全的密码
+  if (!isProduction) {
+    // 开发环境使用临时密码
+    const defaultPassword = 'dzt123';
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    insertDefaultAdmin.run(1, 'admin', hashedPassword);
+    
+    // 更新现有管理员用户的密码
+    const updateAdminPassword = db.prepare(`
+      UPDATE users SET password = ? WHERE username = ?
+    `);
+    updateAdminPassword.run(hashedPassword, 'admin');
+  } else {
+    console.log('生产环境注意：请手动设置管理员密码！');
+  }
 
   // 插入默认图片分类
   const insertDefaultCategories = db.prepare(`
@@ -175,7 +189,7 @@ const PORT = process.env.PORT || 3000;
 
 // 配置 CORS
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: FRONTEND_URL,
   credentials: true
 }));
 
@@ -677,6 +691,62 @@ app.delete('/api/users/:id', (req, res) => {
 // 提供API文档访问
 app.get('/api-docs', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'API_DOCUMENTATION.md'));
+});
+
+// 小程序公共访问API接口
+// 注意：这些接口设计为无需登录即可访问，仅提供只读功能
+
+// 获取所有图片分类（公共访问）
+app.get('/public/api/categories', (req, res) => {
+  try {
+    const categories = db.prepare('SELECT * FROM image_categories').all();
+    res.json(convertArrayTimeFields(categories));
+  } catch (error) {
+    console.error('Error fetching public categories:', error);
+    res.status(500).json({ error: '获取分类失败' });
+  }
+});
+
+// 获取图片列表（公共访问）
+app.get('/public/api/images', (req, res) => {
+  try {
+    const { category_id, name } = req.query;
+    let query = 'SELECT * FROM images WHERE 1=1';
+    const params = [];
+    
+    if (category_id) {
+      query += ' AND category_id = ?';
+      params.push(category_id);
+    }
+    
+    if (name) {
+      query += ' AND name LIKE ?';
+      params.push(`%${name}%`);
+    }
+    
+    const images = db.prepare(query).all(...params);
+    res.json(convertArrayTimeFields(images));
+  } catch (error) {
+    console.error('Error fetching public images:', error);
+    res.status(500).json({ error: '获取图片失败' });
+  }
+});
+
+// 获取单张图片（公共访问）
+app.get('/public/api/images/:id', (req, res) => {
+  try {
+    const imageId = req.params.id;
+    const image = db.prepare('SELECT * FROM images WHERE id = ?').get(imageId);
+    
+    if (image) {
+      res.json(convertObjectTimeFields(image));
+    } else {
+      res.status(404).json({ error: '图片不存在' });
+    }
+  } catch (error) {
+    console.error('Error fetching public image:', error);
+    res.status(500).json({ error: '获取图片失败' });
+  }
 });
 
 // 启动服务器

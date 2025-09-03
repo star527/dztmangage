@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "server": "node server.js"
+    "server": "node server.js",
+    "server:prod": "NODE_ENV=production API_BASE_URL=https://www.dongzhentu.com/api FRONTEND_URL=https://www.dongzhentu.com PORT=3000 node server.js"
   },
   "dependencies": {
     "@ant-design/compatible": "^5.1.4",
@@ -16,6 +17,7 @@
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.2.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "multer": "^2.0.2",
     "react": "^18.2.0",
@@ -32,5 +34,8 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "vite": "^7.1.2"
+  },
+  "resolutions": {
+    "core-js": "^3.35.0"
   }
 }

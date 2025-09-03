@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:3000/api';
+import { envConfig } from '../utils/envConfig.js';
+const API_BASE_URL = envConfig.API_BASE_URL;
 
 export const fetchCategories = async () => {
   const response = await fetch(`${API_BASE_URL}/categories`);
