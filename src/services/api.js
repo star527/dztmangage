@@ -1,5 +1,21 @@
 import { envConfig } from '../utils/envConfig.js';
-const API_BASE_URL = envConfig.API_BASE_URL;
+
+// 获取完整的API基础URL
+const getApiBaseUrl = () => {
+  const baseUrl = envConfig.API_BASE_URL;
+  // 如果是相对路径，确保以/开头
+  if (baseUrl && baseUrl.startsWith('/')) {
+    return baseUrl;
+  }
+  // 如果是完整URL，直接返回
+  if (baseUrl && (baseUrl.startsWith('http://') || baseUrl.startsWith('https://'))) {
+    return baseUrl;
+  }
+  // 默认返回/api
+  return '/api';
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 export const fetchCategories = async () => {
   const response = await fetch(`${API_BASE_URL}/categories`);

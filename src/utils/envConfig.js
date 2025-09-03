@@ -9,14 +9,14 @@ export const getEnvConfig = () => {
   if (isProduction) {
     return {
       // 生产环境配置
-      API_BASE_URL: process.env.API_BASE_URL || 'https://www.dongzhentu.com/api',
-      FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.dongzhentu.com'
+      API_BASE_URL: process.env.API_BASE_URL || '/api',
+      // FRONTEND_URL: process.env.FRONTEND_URL || 'https://www.dongzhentu.com'
     };
   } else {
     return {
       // 开发环境配置
-      API_BASE_URL: 'http://localhost:3000/api',
-      FRONTEND_URL: 'http://localhost:5173'
+      API_BASE_URL: '/api',
+      // FRONTEND_URL: 'http://localhost:5173'
     };
   }
 };

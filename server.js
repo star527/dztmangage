@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
+import history from 'connect-history-api-fallback';
 
 // 加载.env文件中的环境变量
 import dotenv from 'dotenv';
@@ -186,6 +187,25 @@ const upload = multer({ storage: storage });
 // 创建 Express 应用
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// 提供 dist 目录作为静态资源
+const distPath = path.join(__dirname, 'dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  console.log(`Static files served from ${distPath}`);
+  
+  // 使用 history api fallback 中间件处理 SPA 路由
+  app.use(history({
+    verbose: true,
+    rewrites: [
+      // API 请求不会被重写
+      { from: /^\/api/, to: '/' }
+    ]
+  }));
+  
+  // 再次使用静态文件中间件，确保重写后的请求也能正确处理
+  app.use(express.static(distPath));
+}
 
 // 配置 CORS
 app.use(cors({
