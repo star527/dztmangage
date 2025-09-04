@@ -82,12 +82,21 @@ export const login = async (username, password) => {
 };
 
 export const fetchImages = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/images`);
+  // 构建基础URL
+  let url = `${API_BASE_URL}/images`;
+  
+  // 构建查询参数
+  const queryParams = [];
   Object.keys(params).forEach(key => {
     if (params[key]) {
-      url.searchParams.append(key, params[key]);
+      queryParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`);
     }
   });
+  
+  // 如果有查询参数，添加到URL末尾
+  if (queryParams.length > 0) {
+    url += '?' + queryParams.join('&');
+  }
   
   const response = await fetch(url);
   if (!response.ok) {
@@ -175,12 +184,21 @@ export const deleteRole = async (id) => {
 };
 
 export const fetchUsers = async (params = {}) => {
-  const url = new URL(`${API_BASE_URL}/users`);
+  // 构建基础URL
+  let url = `${API_BASE_URL}/users`;
+  
+  // 构建查询参数
+  const queryParams = [];
   Object.keys(params).forEach(key => {
     if (params[key]) {
-      url.searchParams.append(key, params[key]);
+      queryParams.push(`${encodeURIComponent(key)}=${encodeURIComponent(params[key])}`);
     }
   });
+  
+  // 如果有查询参数，添加到URL末尾
+  if (queryParams.length > 0) {
+    url += '?' + queryParams.join('&');
+  }
   
   const response = await fetch(url);
   if (!response.ok) {

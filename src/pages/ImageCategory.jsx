@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, message, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { fetchCategories, createCategory, updateCategory, deleteCategory } from '../services/api';
+import { convertObjectTimeFields } from '../utils/timeUtils';
 
 const ImageCategory = () => {
   const [categories, setCategories] = useState([]);
@@ -15,7 +16,9 @@ const ImageCategory = () => {
     setLoading(true);
     try {
       const data = await fetchCategories();
-      setCategories(data);
+      // 对时间字段进行格式化处理
+      const formattedData = data.map(item => convertObjectTimeFields(item));
+      setCategories(formattedData);
     } catch (error) {
       message.error('获取分类数据失败: ' + error.message);
     } finally {

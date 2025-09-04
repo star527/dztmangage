@@ -1,6 +1,6 @@
 // 时间格式化工具函数
 
-// 将ISO时间字符串转换为本地时间格式
+// 将ISO时间字符串转换为中国标准时间(CST，UTC+8)格式
 export const formatLocalTime = (isoString) => {
   if (!isoString) return '';
   
@@ -9,15 +9,15 @@ export const formatLocalTime = (isoString) => {
     // 检查日期是否有效
     if (isNaN(date.getTime())) return isoString;
     
-    // 转换为本地时间字符串
-    return date.toLocaleString('zh-CN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
+    // 转换为中国标准时间(CST，UTC+8)字符串，格式为"2025-08-24 00:00:00"
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   } catch (error) {
     console.error('时间格式化错误:', error);
     return isoString;
